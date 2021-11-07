@@ -1,69 +1,160 @@
 <!DOCTYPE html>
 <html lang="en">
-
-<head>
-    <meta charset="UTF-8">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Mob Push</title>
     <style>
-        * {
-            background-color: #141414;
-            color: white;
-        }
+      * {
+        background-color: #141414;
+        color: white;
+      }
 
-        input[type=button] {
-            width: 100%;
-            height: 32px;
-            border: 2px solid #ffffff;
-            border-radius: 10px;
-        }
+      input[type="button"] {
+        width: 100%;
+        height: 32px;
+        border: 2px solid #ffffff;
+        border-radius: 10px;
+        cursor: pointer;
+      }
 
-        textarea {
-            margin-left: -4px;
-            width: 100%;
-            height:360px;
-            border: 2px solid #ffffff;
-            border-radius: 10px;
-        }
+      input[type="button"]:hover {
+          border: 2px dashed #ffffff;
+      }
+
+      textarea {
+        margin-left: -4px;
+        width: 100%;
+        height: 360px;
+        border: 2px solid #ffffff;
+        border-radius: 10px;
+      }
+
+      .hidden {
+        display: none;
+      }
     </style>
-</head>
+  </head>
 
-<body>
+  <body>
+    <h3>Upload new File</h3>
+    <!-- <form method=post enctype=multipart/form-data> -->
+    <input type="file" name="file" id="fileInput" /> <br /><br />
+    <input type="button" value="Upload" id="btnUpload" /> <br /><br />
+    <input type="button" value="Delete all existing files" id="btnDeleteAll" /> <br /><br />
+    <div id="dvLinks">
+      <a href="" id="fileAnchor" class="hidden"></a> <br /><br />
+    </div>
+    <!-- </form> -->
+    <hr />
+    <h3>Text to send</h3>
     <textarea id="txt"></textarea>
-    <input type="button" value="Send" id="btnsend">
+    <input type="button" value="Send" id="btnsend" />
 
     <script>
-        var txt = document.getElementById('txt');
-        fetch("/text", {
+      var btnUpload = document.getElementById("btnUpload");
+      var fileInput = document.getElementById("fileInput");
+      var fileAnchor = document.getElementById("fileAnchor");
+      var dvLinks = document.getElementById("dvLinks");
+      var btnDeleteAll = document.getElementById("btnDeleteAll");
+
+      function deleteFile(filename) {
+        fetch(`/docs/${filename}/delete`, {
+            method: "POST",
             headers: {
-                "Content-Type": "application/json"
-            }
-        })
-            .then(x => x.json())
-            .then(x => txt.value = x.text);
+              "Content-Type": "application/json",
+            },
+          })
+            .then((x) => x.json())
+            .then((x) => {
+              loadLinks();
+            });
+      }
 
-        function save() {
-            fetch("/text",
-                {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json"
-                    },
-                    body: JSON.stringify({ text: txt.value })
-                })
-                .then(x => x.json())
-                .then(x => console.log(x));
+      function deleteAllFiles(filename) {
+        fetch(`/docs/deleteall`, {
+            method: "DELETE",
+            headers: {
+              "Content-Type": "application/json",
+            },
+          })
+            .then((x) => x.json())
+            .then((x) => {
+              loadLinks();
+            });
+      }
+
+      function loadLinks() {
+        fetch("/links", {
+          headers: {
+            "Content-Type": "application/json",
+          },
+        })
+          .then((x) => x.json())
+          .then((x) => {
+            var links = x.reduce((a, c) => {
+                const filename = c.substr(c.lastIndexOf('/')+1);
+                return a + `<a href="${c}">${c}</a>&nbsp;&nbsp;
+                <input style="width:auto;" type="button" value="Delete" onclick="deleteFile('${filename}')"><br><br>`;
+            }, "");
+            dvLinks.innerHTML = links;
+          });
+      }
+
+      loadLinks();
+
+      btnDeleteAll.addEventListener("click", (ev) => deleteAllFiles());
+      btnUpload.addEventListener("click", (ev) => {
+        if (fileInput.files.length === 0) {
+          alert("Please select a file to upload");
+        } else {
+          var formData = new FormData();
+          formData.append("file", fileInput.files[0], fileInput.files[0].name);
+          const options = {
+            method: "POST",
+            body: formData
+          };
+
+          fetch("/upload", options)
+            .then((res) => res.text())
+            .then((fileurl) => {
+              loadLinks();
+              /*fileAnchor.className = "";
+              fileAnchor.href = fileurl;
+              fileAnchor.innerText = fileurl;*/
+            });
         }
+      });
 
-        document.getElementById('btnsend').addEventListener('click', () => {
-            save();
-        });
+      var txt = document.getElementById("txt");
+      fetch("/text", {
+        headers: {
+          "Content-Type": "application/json",
+        },
+      })
+        .then((x) => x.json())
+        .then((x) => (txt.value = x.text));
 
-        document.addEventListener('keydown', ev => {
-            if (ev.ctrlKey && ev.keyCode === 13) save();
+      function save() {
+        fetch("/text", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ text: txt.value }),
         })
-    </script>
-</body>
+          .then((x) => x.json())
+          .then((x) => console.log(x));
+      }
 
+      document.getElementById("btnsend").addEventListener("click", () => {
+        save();
+      });
+
+      document.addEventListener("keydown", (ev) => {
+        if (ev.ctrlKey && ev.keyCode === 13) save();
+      });
+    </script>
+  </body>
 </html>
