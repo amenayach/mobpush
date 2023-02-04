@@ -78,6 +78,7 @@ def delete_all_file():
 @app.route('/links')
 def get_links():
     dir_name = app.config["UPLOAD_FOLDER"]
+    if not os.path.exists(dir_name): os.mkdir(dir_name)
     list_of_files = filter(lambda x: os.path.isfile(os.path.join(dir_name, x)),
                            os.listdir(dir_name))
     list_of_files = sorted(list_of_files,
